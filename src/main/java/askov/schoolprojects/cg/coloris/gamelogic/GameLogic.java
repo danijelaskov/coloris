@@ -41,8 +41,7 @@ public class GameLogic {
     private static final double MAX_SPEED = DEFAULT_FALLING_BLOCK_SPEED * SPEED_UP_FACTOR;
 
     private final SquareMatrix squareMatrix;
-    private final List<Square> topBlocks = new ArrayList<>();
-    private final List<Integer> topBlockRows = new ArrayList<>();
+    private final List<ColumnTop> columnTops = new ArrayList<>();
     
     private final Block fallingBlock;
     private int fallingBlockColumn;
@@ -65,8 +64,7 @@ public class GameLogic {
         fallingBlockColumn = squareMatrix.getNumColumns() / 2;
         
         for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
-            topBlocks.add(j, null);
-            topBlockRows.add(j, 0);
+            columnTops.add(j, new ColumnTop(null, 0));
         }
         
         fallingBlock.setTranslateX(this.squareMatrix.getTranslateX() + fallingBlock.getBoundsInParent().getWidth() * fallingBlockColumn);
@@ -79,7 +77,8 @@ public class GameLogic {
         switch (fallingBlockMoveDirection) {
             case LEFT -> {
                 if (fallingBlockColumn > 0) {
-                    topBlock = topBlocks.get(fallingBlockColumn - 1);
+                    ColumnTop neighboringColumnTop = columnTops.get(fallingBlockColumn - 1);
+                    topBlock = neighboringColumnTop != null ? neighboringColumnTop.square() : null;
                     if (topBlock != null && fallingBlockY + CRITICAL_DISTANCE >= squareMatrix.getTranslateY() + topBlock.getTranslateY()) {
                         break;
                     }
@@ -89,7 +88,8 @@ public class GameLogic {
             }
             case RIGHT -> {
                 if (fallingBlockColumn < squareMatrix.getNumColumns() - 1) {
-                    topBlock = topBlocks.get(fallingBlockColumn + 1);
+                    ColumnTop neighboringColumnTop = columnTops.get(fallingBlockColumn + 1);
+                    topBlock = neighboringColumnTop != null ? neighboringColumnTop.square() : null;
                     if (topBlock != null && fallingBlockY + CRITICAL_DISTANCE >= squareMatrix.getTranslateY() + topBlock.getTranslateY()) {
                         break;
                     }
@@ -113,31 +113,28 @@ public class GameLogic {
     public void checkCollision() {
         int fallingBlockRow;
         
-        Square topBlock = topBlocks.get(fallingBlockColumn);
+        ColumnTop currentColumnTop = columnTops.get(fallingBlockColumn);
+        Square topBlock = currentColumnTop != null ? currentColumnTop.square() : null;
         double fallingBlockY = fallingBlock.getTranslateY() + fallingBlock.getBottomSquare().getTranslateY() + fallingBlock.getBottomSquare().getBoundsInParent().getHeight();
 
         if (topBlock != null && fallingBlockY + CRITICAL_DISTANCE >= squareMatrix.getTranslateY() + topBlock.getTranslateY()) {
-            fallingBlockRow = topBlockRows.get(fallingBlockColumn) - fallingBlock.getNumSquares();
+            fallingBlockRow = currentColumnTop.row() - fallingBlock.getNumSquares();
 
-            topBlocks.remove(fallingBlockColumn);
-            topBlockRows.remove(fallingBlockColumn);
+            columnTops.remove(fallingBlockColumn);
 
             squareMatrix.absorbColorsFrom(fallingBlockRow, fallingBlockColumn, fallingBlock);
 
-            topBlocks.add(fallingBlockColumn, squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn));
-            topBlockRows.add(fallingBlockColumn, fallingBlockRow);
+            columnTops.add(fallingBlockColumn, new ColumnTop(squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn), fallingBlockRow));
 
             returnFallingBlockToStartPosition();
         } else if (fallingBlockY + CRITICAL_DISTANCE >= squareMatrix.getTranslateY() + squareMatrix.getHeight()) {
             fallingBlockRow = squareMatrix.getNumRows() - fallingBlock.getNumSquares();
 
-            topBlocks.remove(fallingBlockColumn);
-            topBlockRows.remove(fallingBlockColumn);
+            columnTops.remove(fallingBlockColumn);
 
             squareMatrix.absorbColorsFrom(fallingBlockRow, fallingBlockColumn, fallingBlock);
 
-            topBlocks.add(fallingBlockColumn, squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn));
-            topBlockRows.add(fallingBlockColumn, fallingBlockRow);
+            columnTops.add(fallingBlockColumn, new ColumnTop(squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn), fallingBlockRow));
 
             returnFallingBlockToStartPosition();
         }
@@ -276,11 +273,9 @@ public class GameLogic {
             }
             
             if (moveToRowIndex < squareMatrix.getNumRows() - 1) {
-                topBlocks.set(j, squareMatrix.getSquare(moveToRowIndex + 1, j));
-                topBlockRows.set(j, moveToRowIndex + 1);
+                columnTops.set(j, new ColumnTop(squareMatrix.getSquare(moveToRowIndex + 1, j), moveToRowIndex + 1));
             } else {
-                topBlocks.set(j, null);
-                topBlockRows.set(j, 0);
+                columnTops.set(j, new ColumnTop(null, 0));
             }
         }
     }
