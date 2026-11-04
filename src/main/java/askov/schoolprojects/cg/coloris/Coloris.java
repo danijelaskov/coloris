@@ -35,11 +35,16 @@ import askov.schoolprojects.cg.coloris.sprites.Well;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Bounds;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -72,7 +77,7 @@ public class Coloris extends Application {
 
     private boolean paused = false;
     private Text pauseText;
-    
+
     private Scene scene;
 
     private GameMenu mainMenu;
@@ -173,15 +178,15 @@ public class Coloris extends Application {
         root = new Group();
 
         root.getChildren().addAll(universe, well);
-        
+
         well.setTranslateX(-well.getWidth() / 2 + WIDTH / 3.);
         well.setTranslateY(-well.getBorderSize());
 
         fallingBlock = well.getFallingBlock();
-        
+
         nextBlock.setTranslateX(-BLOCK_SIZE / 2 + 0.50 * well.getTranslateX());
         nextBlock.setTranslateY(0.15 * HEIGHT);
-        
+
         GameLogo gameLogo = new GameLogo();
         gameLogo.setTranslateX(-gameLogo.getWidth() / 2 + 0.50 * well.getTranslateX());
         gameLogo.setTranslateY(nextBlock.getTranslateY() + nextBlock.getHeight() + GameLogo.FONT_SIZE + 10);
@@ -195,14 +200,19 @@ public class Coloris extends Application {
         pauseText.setTranslateX(-pauseText.getBoundsInParent().getWidth() / 2 + WIDTH / 3.);
         pauseText.setTranslateY(-pauseText.getBoundsInParent().getHeight() / 2 + 0.20 * well.getSquareMatrix().getHeight());
         root.getChildren().add(pauseText);
-        
+
         LabeledValue score = new LabeledValue(SQUARE_MATRIX_WIDTH, HEIGHT / 6, "SCORE", 0);
         score.setTranslateX(-score.getWidth() / 2 + (WIDTH - (WIDTH - (WIDTH / 3. + well.getWidth() / 2)) / 2));
         score.setTranslateY(-score.getHeight() / 2 + HEIGHT / 2.);
-        
-        root.getChildren().addAll(score);
 
-        gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score);
+        // Nível atual (começa em 01 e sobe a cada vez que a pontuação-alvo é atingida)
+        LabeledValue level = new LabeledValue(SQUARE_MATRIX_WIDTH, HEIGHT / 6, "LEVEL", 1, 2);
+        level.setTranslateX(score.getTranslateX());
+        level.setTranslateY(score.getTranslateY() - score.getHeight() - 15);
+
+        root.getChildren().addAll(score, level);
+
+        gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score, level);
 
         scene.setRoot(root);
         scene.setOnKeyPressed(event -> {
@@ -241,7 +251,7 @@ public class Coloris extends Application {
     }
 
     private void togglePause() {
-        if (gameLogic == null || gameLogic.isGameOver()) {
+        if (gameLogic == null || gameLogic.isGameOver() || gameLogic.isGameWon()) {
             return;
         }
 
@@ -263,6 +273,36 @@ public class Coloris extends Application {
             return;
         }
 
+        if (gameLogic.isGameWon()) {
+            well.update();
+
+            animationTimer.stop();
+            scene.setOnKeyPressed(event -> {});
+            mediaPlayer.stop();
+
+            // Faixa escura translúcida atrás do texto, para dar contraste
+            Rectangle banner = new Rectangle(WIDTH, 140);
+            banner.setFill(Color.rgb(0, 0, 0, 0.75));
+            banner.setTranslateY(HEIGHT / 2. - banner.getHeight() / 2);
+
+            // Texto dourado, grande, com contorno e sombra
+            Text winLabel = new Text("YOU WIN!");
+            winLabel.setFont(Font.font("Arial", FontWeight.EXTRA_BOLD, 96));
+            winLabel.setFill(Color.GOLD);
+            winLabel.setStroke(Color.web("0x8B4500"));
+            winLabel.setStrokeWidth(3);
+            winLabel.setEffect(new DropShadow(15, Color.BLACK));
+
+            root.getChildren().addAll(banner, winLabel);
+
+            // Centraliza o texto no centro da janela (horizontal e vertical)
+            Bounds bounds = winLabel.getBoundsInLocal();
+            winLabel.setTranslateX(WIDTH / 2. - (bounds.getMinX() + bounds.getWidth() / 2));
+            winLabel.setTranslateY(HEIGHT / 2. - (bounds.getMinY() + bounds.getHeight() / 2));
+
+            return;
+        }
+
         if (!gameLogic.squareDestruction()) {
             gameLogic.moveFallingBlockVertically();
             gameLogic.checkCollision();
@@ -271,7 +311,7 @@ public class Coloris extends Application {
 
             if (gameLogic.isGameOver()) {
                 well.update();
-                
+
                 animationTimer.stop();
                 scene.setOnKeyPressed(event -> {});
                 mediaPlayer.stop();

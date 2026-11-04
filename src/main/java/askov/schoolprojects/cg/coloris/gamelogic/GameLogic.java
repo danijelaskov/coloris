@@ -32,47 +32,53 @@ import javafx.animation.ParallelTransition;
  * @author Danijel Askov
  */
 public class GameLogic {
-    
+
     public enum MoveDirection {LEFT, RIGHT}
     private static final double CRITICAL_DISTANCE = 5; // Pixels
     private static final double DEFAULT_FALLING_BLOCK_SPEED = 100; // Pixels per second
     private static final double REFRESH_RATE = 60; // Frames per second
     private static final double SPEED_UP_FACTOR = 3;
     private static final double MAX_SPEED = DEFAULT_FALLING_BLOCK_SPEED * SPEED_UP_FACTOR;
+    // Meta de pontos de cada nível: nível 1 = 30, nível 2 = 50, nível 3 = 80
+    private static final int[] LEVEL_TARGET_SCORES = {30, 50, 80};
+    private static final int MAX_LEVEL = LEVEL_TARGET_SCORES.length;
 
     private final SquareMatrix squareMatrix;
     private final List<Square> topBlocks = new ArrayList<>();
     private final List<Integer> topBlockRows = new ArrayList<>();
-    
+
     private final Block fallingBlock;
     private int fallingBlockColumn;
     private double fallingBlockSpeed = DEFAULT_FALLING_BLOCK_SPEED;
-    
-    private final Block nextBlock;
-    
-    private boolean gameOver;
-    private int numDestroyedSquares; 
-    private boolean squareDestruction;
-    
-    private final LabeledValue score;
 
-    public GameLogic(SquareMatrix squareMatrix, Block fallingBlock, Block nextBlock, LabeledValue score) {
+    private final Block nextBlock;
+
+    private boolean gameOver;
+    private boolean gameWon;
+    private int numDestroyedSquares;
+    private boolean squareDestruction;
+
+    private final LabeledValue score;
+    private final LabeledValue level;
+
+    public GameLogic(SquareMatrix squareMatrix, Block fallingBlock, Block nextBlock, LabeledValue score, LabeledValue level) {
         this.squareMatrix = squareMatrix;
         this.fallingBlock = fallingBlock;
         this.nextBlock = nextBlock;
         this.score = score;
-        
+        this.level = level;
+
         fallingBlockColumn = squareMatrix.getNumColumns() / 2;
-        
+
         for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
             topBlocks.add(j, null);
             topBlockRows.add(j, 0);
         }
-        
+
         fallingBlock.setTranslateX(this.squareMatrix.getTranslateX() + fallingBlock.getBoundsInParent().getWidth() * fallingBlockColumn);
         fallingBlock.setTranslateY(-fallingBlock.getBoundsInParent().getHeight());
     }
-    
+
     public void moveFallingBlockHorizontally(MoveDirection fallingBlockMoveDirection) {
         Square topBlock;
         double fallingBlockY = fallingBlock.getTranslateY() + fallingBlock.getBottomSquare().getTranslateY() + fallingBlock.getBottomSquare().getBoundsInParent().getHeight();
@@ -99,20 +105,20 @@ public class GameLogic {
             }
         }
     }
-    
+
     public void speedUpFallingBlock() {
         if (fallingBlockSpeed < MAX_SPEED) {
             fallingBlockSpeed *= SPEED_UP_FACTOR;
         }
     }
-    
+
     public void moveFallingBlockVertically() {
         fallingBlock.setTranslateY(fallingBlock.getTranslateY() + fallingBlockSpeed / REFRESH_RATE);
     }
-    
+
     public void checkCollision() {
         int fallingBlockRow;
-        
+
         Square topBlock = topBlocks.get(fallingBlockColumn);
         double fallingBlockY = fallingBlock.getTranslateY() + fallingBlock.getBottomSquare().getTranslateY() + fallingBlock.getBottomSquare().getBoundsInParent().getHeight();
 
@@ -142,7 +148,7 @@ public class GameLogic {
             returnFallingBlockToStartPosition();
         }
     }
-    
+
     private void returnFallingBlockToStartPosition() {
         fallingBlockSpeed = DEFAULT_FALLING_BLOCK_SPEED;
         fallingBlockColumn = squareMatrix.getNumColumns() / 2;
@@ -152,22 +158,22 @@ public class GameLogic {
         fallingBlock.absorbColorsFrom(nextBlock);
         nextBlock.setRandomSquareColors();
     }
-    
+
     public void reorderFallingBlockSquares() {
         fallingBlock.reorderSquares();
     }
- 
+
     public void destroyAdjacentSquares() {
         List<Square> adjacentSquares = new ArrayList<>();
-        
+
         for (int i = 0; i < squareMatrix.getNumRows(); i++) {
             for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
                 Square currentSquare = squareMatrix.getSquare(i, j);
-                
+
                 if (currentSquare.getSquareColor() == Square.DEFAULT_SQUARE_COLOR) {
                     continue;
                 }
-                
+
                 // Try to find same-colored squares in currentSquare's row
                 int k = j + 1;
                 int numAdjacentSquares = 1;
@@ -179,7 +185,7 @@ public class GameLogic {
                     }
                     k++;
                 }
-                
+
                 if (numAdjacentSquares > 2) {
                     for (k = j; k < j + numAdjacentSquares; k++) {
                         Square adjacentSquare = squareMatrix.getSquare(i, k);
@@ -190,7 +196,7 @@ public class GameLogic {
                         }
                     }
                 }
-                
+
                 // Try to find same-colored squares in currentSquare's column
                 k = i + 1;
                 numAdjacentSquares = 1;
@@ -202,7 +208,7 @@ public class GameLogic {
                     }
                     k++;
                 }
-                
+
                 if (numAdjacentSquares > 2) {
                     for (k = i; k < i + numAdjacentSquares; k++) {
                         Square adjacentSquare = squareMatrix.getSquare(k, j);
@@ -215,12 +221,12 @@ public class GameLogic {
                 }
             }
         }
-        
+
         if (!adjacentSquares.isEmpty()) {
             ParallelTransition parallelTransition = new ParallelTransition();
             parallelTransition.setCycleCount(1);
             parallelTransition.setAutoReverse(false);
-            
+
             for (Square adjacentSquare : adjacentSquares) {
                 parallelTransition.getChildren().add(adjacentSquare.getDestructionAnimation());
             }
@@ -229,10 +235,12 @@ public class GameLogic {
                 destroyAdjacentSquares();
             });
             parallelTransition.play();
-            
+
             squareDestruction = true;
         } else {
-            if (squareMatrix.isColumnOverflow()) {
+            if (targetScoreReached()) {
+                clearWellAndRestart();
+            } else if (squareMatrix.isColumnOverflow()) {
                 gameOver = true;
             } else if (numDestroyedSquares >= 5) {
                 removeBottomRow();
@@ -242,7 +250,7 @@ public class GameLogic {
             }
         }
     }
-    
+
     private void removeGaps() {
         for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
             int moveToRowIndex;
@@ -252,7 +260,7 @@ public class GameLogic {
                     break;
                 }
             }
-            
+
             int moveFromRowIndex;
             for (moveFromRowIndex = moveToRowIndex - 1; moveFromRowIndex >= 0; moveFromRowIndex--) {
                 Square square = squareMatrix.getSquare(moveFromRowIndex, j);
@@ -260,7 +268,7 @@ public class GameLogic {
                     break;
                 }
             }
-            
+
             while (moveFromRowIndex >= 0) {
                 Square fromSquare = squareMatrix.getSquare(moveFromRowIndex, j);
                 if (fromSquare.getSquareColor() == Square.DEFAULT_SQUARE_COLOR) {
@@ -270,11 +278,11 @@ public class GameLogic {
                 moveFromRowIndex--;
                 moveToRowIndex--;
             }
-            
+
             for (int i = moveToRowIndex; i >= 0; i--) {
                 squareMatrix.getSquare(i, j).setSquareColor(Square.DEFAULT_SQUARE_COLOR);
             }
-            
+
             if (moveToRowIndex < squareMatrix.getNumRows() - 1) {
                 topBlocks.set(j, squareMatrix.getSquare(moveToRowIndex + 1, j));
                 topBlockRows.set(j, moveToRowIndex + 1);
@@ -284,20 +292,20 @@ public class GameLogic {
             }
         }
     }
-    
+
     private void removeBottomRow() {
         ParallelTransition parallelTransition = new ParallelTransition();
         parallelTransition.setCycleCount(1);
         parallelTransition.setAutoReverse(false);
-        
+
         int i = squareMatrix.getNumRows() - 1;
         int numBottomRowSquares = 0;
-        
+
         for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
             Square bottomRowSquare = squareMatrix.getSquare(i, j);
             if (bottomRowSquare.getSquareColor() != Square.DEFAULT_SQUARE_COLOR) {
                 parallelTransition.getChildren().add(bottomRowSquare.getDestructionAnimation());
-                
+
                 numBottomRowSquares++;
             }
         }
@@ -309,14 +317,78 @@ public class GameLogic {
             removeGaps();
             squareDestruction = false;
             numDestroyedSquares = 0;
+            if (targetScoreReached()) {
+                clearWellAndRestart();
+            }
         });
         parallelTransition.play();
     }
-    
+
+    /**
+     * Anima a destruição de todos os quadrados restantes no poço e,
+     * ao final, zera o poço, o score e sobe o nível.
+     */
+    private void clearWellAndRestart() {
+        ParallelTransition parallelTransition = new ParallelTransition();
+        parallelTransition.setCycleCount(1);
+        parallelTransition.setAutoReverse(false);
+
+        for (int i = 0; i < squareMatrix.getNumRows(); i++) {
+            for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
+                Square square = squareMatrix.getSquare(i, j);
+                if (square.getSquareColor() != Square.DEFAULT_SQUARE_COLOR) {
+                    parallelTransition.getChildren().add(square.getDestructionAnimation());
+                }
+            }
+        }
+
+        squareDestruction = true; // Mantém o jogo "pausado" durante a animação
+
+        if (parallelTransition.getChildren().isEmpty()) {
+            resetWell();
+        } else {
+            parallelTransition.setOnFinished(event -> resetWell());
+            parallelTransition.play();
+        }
+    }
+
+    private void resetWell() {
+        for (int i = 0; i < squareMatrix.getNumRows(); i++) {
+            for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
+                squareMatrix.getSquare(i, j).setSquareColor(Square.DEFAULT_SQUARE_COLOR);
+            }
+        }
+        for (int j = 0; j < squareMatrix.getNumColumns(); j++) {
+            topBlocks.set(j, null);
+            topBlockRows.set(j, 0);
+        }
+        numDestroyedSquares = 0;
+        if (level.getValue() >= MAX_LEVEL) {
+            gameWon = true; // Meta do último nível atingida: fim de jogo com vitória
+        } else {
+            score.setValue(0);
+            level.setValue(level.getValue() + 1);
+        }
+        squareDestruction = false;
+    }
+
+    private int currentTargetScore() {
+        int levelIndex = Math.min(Math.max(level.getValue(), 1), MAX_LEVEL) - 1;
+        return LEVEL_TARGET_SCORES[levelIndex];
+    }
+
+    private boolean targetScoreReached() {
+        return score.getValue() >= currentTargetScore();
+    }
+
+    public boolean isGameWon() {
+        return gameWon;
+    }
+
     public boolean isGameOver() {
         return gameOver;
     }
-    
+
     public boolean squareDestruction() {
         return squareDestruction;
     }
