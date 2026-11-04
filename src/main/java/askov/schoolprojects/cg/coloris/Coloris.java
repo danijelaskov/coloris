@@ -28,6 +28,7 @@ import askov.schoolprojects.cg.coloris.sprites.GameMenu;
 import askov.schoolprojects.cg.coloris.sprites.GameOverLabel;
 import askov.schoolprojects.cg.coloris.sprites.LabeledValue;
 import askov.schoolprojects.cg.coloris.sprites.MenuOption;
+import askov.schoolprojects.cg.coloris.sprites.MusicToggle;
 import askov.schoolprojects.cg.coloris.sprites.Square;
 import askov.schoolprojects.cg.coloris.sprites.SquareMatrix;
 import askov.schoolprojects.cg.coloris.sprites.Universe;
@@ -82,6 +83,7 @@ public class Coloris extends Application {
 
     private GameMenu mainMenu;
     private ControlsPanel controlsPanel;
+    private boolean musicMuted;
 
     private final Media media = new Media(Thread.currentThread().getContextClassLoader().getResource("music/music.mp3").toExternalForm());
     private final MediaPlayer mediaPlayer = new MediaPlayer(media);
@@ -141,7 +143,7 @@ public class Coloris extends Application {
         menu.setTranslateY(colorStrip.getBoundsInParent().getMaxY() + (HEIGHT - colorStrip.getBoundsInParent().getMaxY() - menu.getHeight()) / 2);
 
         root = new Group();
-        root.getChildren().addAll(universe, gameLogo, colorStrip, menu);
+        root.getChildren().addAll(universe, gameLogo, colorStrip, menu, createMusicToggle());
         scene.setRoot(root);
 
         scene.setOnKeyPressed(event -> {
@@ -169,6 +171,16 @@ public class Coloris extends Application {
             colorStrip.getChildren().add(square);
         }
         return colorStrip;
+    }
+
+    private MusicToggle createMusicToggle() {
+        MusicToggle toggle = new MusicToggle(musicMuted, muted -> {
+            musicMuted = muted;
+            mediaPlayer.setMute(muted);
+        });
+        toggle.setTranslateX(14);
+        toggle.setTranslateY(12);
+        return toggle;
     }
 
     private void startGame() {
@@ -211,6 +223,7 @@ public class Coloris extends Application {
         level.setTranslateY(score.getTranslateY() - score.getHeight() - 15);
 
         root.getChildren().addAll(score, level);
+        root.getChildren().add(createMusicToggle());
 
         gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score, level);
 
