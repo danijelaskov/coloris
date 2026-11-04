@@ -37,7 +37,11 @@ public class Well extends Frame {
     public Well(double squareMatrixWidth, double squareMatrixHeight) {
         super(squareMatrixWidth, RELATIVE_WELL_HEIGHT * squareMatrixHeight, NUM_SEGMENTS, BACKGROUND_COLOR);
         
-        int markerIndex = (int)((((RELATIVE_WELL_HEIGHT - 1) * squareMatrixHeight + (2.0 / 3.0) * Block.DEFAULT_NUM_SQUARES * (squareMatrixHeight / SquareMatrix.DEFAULT_NUM_ROWS)) / (RELATIVE_WELL_HEIGHT * squareMatrixHeight)) * NUM_SEGMENTS);
+        double relativeMarkerHeight = (RELATIVE_WELL_HEIGHT - 1) * squareMatrixHeight;
+        double markerPosition = (2.0 / 3.0) * Block.DEFAULT_NUM_SQUARES * (squareMatrixHeight / SquareMatrix.DEFAULT_NUM_ROWS);
+        double relativeMarkerRatio = (relativeMarkerHeight + markerPosition) / (RELATIVE_WELL_HEIGHT * squareMatrixHeight);
+        int markerIndex = (int)(relativeMarkerRatio * NUM_SEGMENTS);
+
         segmentsLeft[markerIndex].setFillType(FillType.YELLOW);
         segmentsRight[markerIndex].setFillType(FillType.YELLOW_INVERTED);
         
