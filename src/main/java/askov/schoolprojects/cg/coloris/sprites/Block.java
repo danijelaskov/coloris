@@ -43,7 +43,7 @@ public class Block extends Sprite {
         this.height = numSquares * squareHeight;
 
         for (int i = 0; i < numSquares; i++) {
-            squares[i] = new Square(width, squareHeight, Square.SquareColor.randomSquareColor(false));
+            squares[i] = new Square(width, squareHeight, Square.SquareColor.randomVisibleSquareColor());
 
             super.getChildren().add(squares[i]);
         }
@@ -111,7 +111,7 @@ public class Block extends Sprite {
     
     public void setRandomSquareColors() {
         for (int i = 0; i < numSquares; i++) {
-            squares[i].setSquareColor(Square.SquareColor.randomSquareColor(false));
+            squares[i].setSquareColor(Square.SquareColor.randomVisibleSquareColor());
         }
     }
 

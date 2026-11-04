@@ -61,8 +61,12 @@ public class Square extends Sprite {
             return color;
         }
 
-        public static SquareColor randomSquareColor(boolean includeTransparent) {
-            return SQUARE_COLORS.get(RANDOM.nextInt(includeTransparent ? NUM_SQUARE_COLORS : NUM_SQUARE_COLORS - 1));
+        public static SquareColor randomSquareColor() {
+            return SQUARE_COLORS.get(RANDOM.nextInt(NUM_SQUARE_COLORS));
+        }
+
+        public static SquareColor randomVisibleSquareColor() {
+            return SQUARE_COLORS.get(RANDOM.nextInt(NUM_SQUARE_COLORS - 1));
         }
 
     }
