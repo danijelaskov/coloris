@@ -119,25 +119,21 @@ public class GameLogic {
 
         if (topBlock != null && fallingBlockY + CRITICAL_DISTANCE >= squareMatrix.getTranslateY() + topBlock.getTranslateY()) {
             fallingBlockRow = currentColumnTop.row() - fallingBlock.getNumSquares();
-
-            columnTops.remove(fallingBlockColumn);
-
-            squareMatrix.absorbColorsFrom(fallingBlockRow, fallingBlockColumn, fallingBlock);
-
-            columnTops.add(fallingBlockColumn, new ColumnTop(squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn), fallingBlockRow));
-
-            returnFallingBlockToStartPosition();
+            absorbFallingBlock(fallingBlockRow);
         } else if (fallingBlockY + CRITICAL_DISTANCE >= squareMatrix.getTranslateY() + squareMatrix.getHeight()) {
             fallingBlockRow = squareMatrix.getNumRows() - fallingBlock.getNumSquares();
-
-            columnTops.remove(fallingBlockColumn);
-
-            squareMatrix.absorbColorsFrom(fallingBlockRow, fallingBlockColumn, fallingBlock);
-
-            columnTops.add(fallingBlockColumn, new ColumnTop(squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn), fallingBlockRow));
-
-            returnFallingBlockToStartPosition();
+            absorbFallingBlock(fallingBlockRow);
         }
+    }
+    
+    private void absorbFallingBlock(int fallingBlockRow) {
+        columnTops.remove(fallingBlockColumn);
+
+        squareMatrix.absorbColorsFrom(fallingBlockRow, fallingBlockColumn, fallingBlock);
+
+        columnTops.add(fallingBlockColumn, new ColumnTop(squareMatrix.getSquare(fallingBlockRow, fallingBlockColumn), fallingBlockRow));
+
+        returnFallingBlockToStartPosition();
     }
     
     private void returnFallingBlockToStartPosition() {
