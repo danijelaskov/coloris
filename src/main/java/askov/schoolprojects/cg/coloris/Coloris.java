@@ -21,6 +21,7 @@ package askov.schoolprojects.cg.coloris;
 
 import askov.schoolprojects.cg.coloris.gamelogic.GameLogic;
 import askov.schoolprojects.cg.coloris.sprites.ControlsPanel;
+import askov.schoolprojects.cg.coloris.sprites.GameFont;
 import askov.schoolprojects.cg.coloris.sprites.GameLogo;
 import askov.schoolprojects.cg.coloris.sprites.Block;
 import askov.schoolprojects.cg.coloris.sprites.GameMenu;
@@ -38,6 +39,8 @@ import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -67,6 +70,9 @@ public class Coloris extends Application {
     private GameLogic gameLogic;
     private AnimationTimer animationTimer;
 
+    private boolean paused = false;
+    private Text pauseText;
+    
     private Scene scene;
 
     private GameMenu mainMenu;
@@ -181,6 +187,14 @@ public class Coloris extends Application {
         gameLogo.setTranslateY(nextBlock.getTranslateY() + nextBlock.getHeight() + GameLogo.FONT_SIZE + 10);
 
         root.getChildren().addAll(nextBlock, gameLogo);
+
+        pauseText = new Text("PAUSED");
+        pauseText.setFont(new GameFont(GameFont.FontType.MAIN_GAME_FONT, 34).getFont());
+        pauseText.setFill(Color.web("0xEEEE00"));
+        pauseText.setVisible(false);
+        pauseText.setTranslateX(-pauseText.getBoundsInParent().getWidth() / 2 + WIDTH / 3.);
+        pauseText.setTranslateY(-pauseText.getBoundsInParent().getHeight() / 2 + 0.20 * well.getSquareMatrix().getHeight());
+        root.getChildren().add(pauseText);
         
         LabeledValue score = new LabeledValue(SQUARE_MATRIX_WIDTH, HEIGHT / 6, "SCORE", 0);
         score.setTranslateX(-score.getWidth() / 2 + (WIDTH - (WIDTH - (WIDTH / 3. + well.getWidth() / 2)) / 2));
@@ -194,10 +208,27 @@ public class Coloris extends Application {
         scene.setOnKeyPressed(event -> {
             if (fallingBlock != null) {
                 switch (event.getCode()) {
-                    case UP -> gameLogic.reorderFallingBlockSquares();
-                    case DOWN -> gameLogic.speedUpFallingBlock();
-                    case LEFT -> gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.LEFT);
-                    case RIGHT -> gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.RIGHT);
+                    case UP -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.reorderFallingBlockSquares();
+                        }
+                    }
+                    case DOWN -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.speedUpFallingBlock();
+                        }
+                    }
+                    case LEFT -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.LEFT);
+                        }
+                    }
+                    case RIGHT -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.RIGHT);
+                        }
+                    }
+                    case P -> togglePause();
                     default -> {
                     }
                 }
@@ -209,7 +240,29 @@ public class Coloris extends Application {
         mediaPlayer.play();
     }
 
+    private void togglePause() {
+        if (gameLogic == null || gameLogic.isGameOver()) {
+            return;
+        }
+
+        if (paused) {
+            paused = false;
+            pauseText.setVisible(false);
+            animationTimer.start();
+            mediaPlayer.play();
+        } else {
+            paused = true;
+            pauseText.setVisible(true);
+            animationTimer.stop();
+            mediaPlayer.pause();
+        }
+    }
+
     private void update() {
+        if (paused) {
+            return;
+        }
+
         if (!gameLogic.squareDestruction()) {
             gameLogic.moveFallingBlockVertically();
             gameLogic.checkCollision();
