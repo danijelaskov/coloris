@@ -20,15 +20,21 @@
 package askov.schoolprojects.cg.coloris;
 
 import askov.schoolprojects.cg.coloris.gamelogic.GameLogic;
+import askov.schoolprojects.cg.coloris.sprites.ControlsPanel;
+import askov.schoolprojects.cg.coloris.sprites.GameFont;
 import askov.schoolprojects.cg.coloris.sprites.GameLogo;
 import askov.schoolprojects.cg.coloris.sprites.Block;
+import askov.schoolprojects.cg.coloris.sprites.GameMenu;
 import askov.schoolprojects.cg.coloris.sprites.GameOverLabel;
 import askov.schoolprojects.cg.coloris.sprites.LabeledValue;
+import askov.schoolprojects.cg.coloris.sprites.MenuOption;
+import askov.schoolprojects.cg.coloris.sprites.Square;
 import askov.schoolprojects.cg.coloris.sprites.SquareMatrix;
 import askov.schoolprojects.cg.coloris.sprites.Universe;
 import askov.schoolprojects.cg.coloris.sprites.Well;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -54,25 +60,121 @@ public class Coloris extends Application {
     private static final double BLOCK_SIZE = WIDTH / 28;
     private static final double SQUARE_MATRIX_WIDTH = SquareMatrix.DEFAULT_NUM_COLUMNS * BLOCK_SIZE;
     private static final double SQUARE_MATRIX_HEIGHT = (SquareMatrix.DEFAULT_NUM_ROWS + Block.DEFAULT_NUM_SQUARES) * BLOCK_SIZE;
+    private static final double MENU_LOGO_FONT_SIZE = 1.4 * GameLogo.FONT_SIZE;
+    private static final double MENU_WIDTH = 1.5 * SQUARE_MATRIX_WIDTH;
+    private static final double MENU_HEIGHT = HEIGHT / 3.25;
 
     private final Universe universe = new Universe(WIDTH, HEIGHT);
-    private final Well well = new Well(SQUARE_MATRIX_WIDTH, SQUARE_MATRIX_HEIGHT);
+    private Well well;
 
     private Block fallingBlock;
-    private final Block nextBlock = new Block(BLOCK_SIZE, BLOCK_SIZE);
+    private Block nextBlock;
 
     private Group root;
 
     private GameLogic gameLogic;
     private AnimationTimer animationTimer;
 
+    private boolean paused = false;
+    private Text pauseText;
+
     private Scene scene;
+
+    private GameMenu mainMenu;
+    private ControlsPanel controlsPanel;
 
     private final Media media = new Media(Thread.currentThread().getContextClassLoader().getResource("music/music.mp3").toExternalForm());
     private final MediaPlayer mediaPlayer = new MediaPlayer(media);
 
     @Override
     public void start(Stage primaryStage) {
+        mainMenu = new GameMenu(MENU_WIDTH, MENU_HEIGHT,
+                new MenuOption("PLAY", this::startGame),
+                new MenuOption("CONTROLS", this::showControls),
+                new MenuOption("EXIT", Platform::exit));
+        controlsPanel = new ControlsPanel(MENU_WIDTH, MENU_HEIGHT, this::showMainMenu);
+
+        scene = new Scene(new Group(), WIDTH, HEIGHT);
+
+        primaryStage.setTitle("Coloris");
+        primaryStage.setScene(scene);
+        primaryStage.sizeToScene();
+        primaryStage.setResizable(false);
+
+        animationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long currentNanoTime) {
+                update();
+            }
+        };
+
+        mediaPlayer.setOnEndOfMedia(() -> {
+            mediaPlayer.seek(Duration.ZERO);
+            mediaPlayer.play();
+        });
+
+        showMainMenu();
+
+        primaryStage.show();
+    }
+
+    private void showMainMenu() {
+        showMenuScreen(mainMenu);
+        mediaPlayer.play();
+    }
+
+    private void showControls() {
+        showMenuScreen(controlsPanel);
+    }
+
+    private void showMenuScreen(GameMenu menu) {
+        GameLogo gameLogo = new GameLogo(GameLogo.Orientation.HORIZONTAL, MENU_LOGO_FONT_SIZE);
+        Group colorStrip = createColorStrip((int) Math.round(gameLogo.getWidth() / BLOCK_SIZE));
+
+        gameLogo.setTranslateX(-gameLogo.getBoundsInLocal().getMinX() + (WIDTH - gameLogo.getWidth()) / 2);
+        gameLogo.setTranslateY(-gameLogo.getBoundsInLocal().getMinY() + 0.06 * HEIGHT);
+
+        colorStrip.setTranslateX((WIDTH - colorStrip.getBoundsInLocal().getWidth()) / 2);
+        colorStrip.setTranslateY(gameLogo.getBoundsInParent().getMaxY() + BLOCK_SIZE / 2);
+
+        menu.setTranslateX((WIDTH - menu.getWidth()) / 2);
+        menu.setTranslateY(colorStrip.getBoundsInParent().getMaxY() + (HEIGHT - colorStrip.getBoundsInParent().getMaxY() - menu.getHeight()) / 2);
+
+        root = new Group();
+        root.getChildren().addAll(universe, gameLogo, colorStrip, menu);
+        scene.setRoot(root);
+
+        scene.setOnKeyPressed(event -> {
+            switch (event.getCode()) {
+                case UP -> menu.selectPrevious();
+                case DOWN -> menu.selectNext();
+                case ENTER, SPACE -> menu.chooseSelected();
+                case ESCAPE -> {
+                    if (menu != mainMenu) {
+                        showMainMenu();
+                    }
+                }
+                default -> {
+                }
+            }
+        });
+    }
+
+    private static Group createColorStrip(int numSquares) {
+        Group colorStrip = new Group();
+        for (int i = 0; i < numSquares; i++) {
+            Square square = new Square(BLOCK_SIZE, BLOCK_SIZE, Square.SquareColor.randomSquareColor(false));
+            square.setTranslateX(i * BLOCK_SIZE);
+            square.update();
+            colorStrip.getChildren().add(square);
+        }
+        return colorStrip;
+    }
+
+    private void startGame() {
+        well = new Well(SQUARE_MATRIX_WIDTH, SQUARE_MATRIX_HEIGHT);
+        nextBlock = new Block(BLOCK_SIZE, BLOCK_SIZE);
+
         root = new Group();
 
         root.getChildren().addAll(universe, well);
@@ -91,6 +193,14 @@ public class Coloris extends Application {
 
         root.getChildren().addAll(nextBlock, gameLogo);
 
+        pauseText = new Text("PAUSED");
+        pauseText.setFont(new GameFont(GameFont.FontType.MAIN_GAME_FONT, 34).getFont());
+        pauseText.setFill(Color.web("0xEEEE00"));
+        pauseText.setVisible(false);
+        pauseText.setTranslateX(-pauseText.getBoundsInParent().getWidth() / 2 + WIDTH / 3.);
+        pauseText.setTranslateY(-pauseText.getBoundsInParent().getHeight() / 2 + 0.20 * well.getSquareMatrix().getHeight());
+        root.getChildren().add(pauseText);
+
         LabeledValue score = new LabeledValue(SQUARE_MATRIX_WIDTH, HEIGHT / 6, "SCORE", 0);
         score.setTranslateX(-score.getWidth() / 2 + (WIDTH - (WIDTH - (WIDTH / 3. + well.getWidth() / 2)) / 2));
         score.setTranslateY(-score.getHeight() / 2 + HEIGHT / 2.);
@@ -104,43 +214,65 @@ public class Coloris extends Application {
 
         gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score, level);
 
-        scene = new Scene(root, WIDTH, HEIGHT);
+        scene.setRoot(root);
         scene.setOnKeyPressed(event -> {
             if (fallingBlock != null) {
                 switch (event.getCode()) {
-                    case UP -> gameLogic.reorderFallingBlockSquares();
-                    case DOWN -> gameLogic.speedUpFallingBlock();
-                    case LEFT -> gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.LEFT);
-                    case RIGHT -> gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.RIGHT);
+                    case UP -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.reorderFallingBlockSquares();
+                        }
+                    }
+                    case DOWN -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.speedUpFallingBlock();
+                        }
+                    }
+                    case LEFT -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.LEFT);
+                        }
+                    }
+                    case RIGHT -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.RIGHT);
+                        }
+                    }
+                    case P -> togglePause();
                     default -> {
                     }
                 }
             }
         });
 
-        primaryStage.setTitle("Coloris");
-        primaryStage.setScene(scene);
-        primaryStage.sizeToScene();
-        primaryStage.setResizable(false);
-
-        animationTimer = new AnimationTimer() {
-            @Override
-            public void handle(long currentNanoTime) {
-                update();
-            }
-        };
         animationTimer.start();
 
         mediaPlayer.play();
-        mediaPlayer.setOnEndOfMedia(() -> {
-            mediaPlayer.seek(Duration.ZERO);
-            mediaPlayer.play();
-        });
+    }
 
-        primaryStage.show();
+    private void togglePause() {
+        if (gameLogic == null || gameLogic.isGameOver() || gameLogic.isGameWon()) {
+            return;
+        }
+
+        if (paused) {
+            paused = false;
+            pauseText.setVisible(false);
+            animationTimer.start();
+            mediaPlayer.play();
+        } else {
+            paused = true;
+            pauseText.setVisible(true);
+            animationTimer.stop();
+            mediaPlayer.pause();
+        }
     }
 
     private void update() {
+        if (paused) {
+            return;
+        }
+
         if (gameLogic.isGameWon()) {
             well.update();
 

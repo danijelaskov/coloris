@@ -34,7 +34,7 @@ public class LabeledValue extends Frame {
 
     private static final int DEFAULT_NUM_DIGITS = 6;
     private static final Color BACKGROUND_COLOR = Color.web("0x111100");
-    private static final LinearGradient LABEL_FILL_GRADIENT = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE, new Stop(0, Color.web("0x7788AA")), new Stop(1, Color.web("0x113366")));
+    static final LinearGradient LABEL_FILL_GRADIENT = new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE, new Stop(0, Color.web("0x7788AA")), new Stop(1, Color.web("0x113366")));
     private static final Font LABEL_FONT = new GameFont(GameFont.FontType.MAIN_GAME_FONT, 34).getFont();
     private static final Font VALUE_FONT = new GameFont(GameFont.FontType.SEGMENTED_DISPLAY, 58).getFont();
 
