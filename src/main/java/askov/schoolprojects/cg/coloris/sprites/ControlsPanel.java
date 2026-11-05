@@ -35,12 +35,13 @@ public class ControlsPanel extends GameMenu {
     private static final double COLUMN_GAP = 16;
 
     public ControlsPanel(double width, double height, Runnable backAction) {
-        super(width, height, 3, new MenuOption("BACK", backAction));
+        super(width, height, 4, new MenuOption("BACK", backAction));
 
         Group[] rows = {
             createRow("MOVE", KeyCap.Arrow.LEFT, KeyCap.Arrow.RIGHT),
             createRow("SHIFT COLORS", KeyCap.Arrow.UP),
-            createRow("SPEED UP", KeyCap.Arrow.DOWN)
+            createRow("SPEED UP", KeyCap.Arrow.DOWN),
+            createRow("SWITCH BLOCK", new KeyCap(KEY_CAP_SIZE, "C"))
         };
 
         double rowsWidth = 0;
@@ -56,11 +57,19 @@ public class ControlsPanel extends GameMenu {
     }
 
     private static Group createRow(String description, KeyCap.Arrow... arrows) {
+        KeyCap[] keyCaps = new KeyCap[arrows.length];
+        for (int i = 0; i < arrows.length; i++) {
+            keyCaps[i] = new KeyCap(KEY_CAP_SIZE, arrows[i]);
+        }
+        return createRow(description, keyCaps);
+    }
+
+    private static Group createRow(String description, KeyCap... keyCaps) {
         Group row = new Group();
 
-        double keysWidth = arrows.length * KEY_CAP_SIZE + (arrows.length - 1) * KEY_CAP_GAP;
-        for (int i = 0; i < arrows.length; i++) {
-            KeyCap keyCap = new KeyCap(KEY_CAP_SIZE, arrows[i]);
+        double keysWidth = keyCaps.length * KEY_CAP_SIZE + (keyCaps.length - 1) * KEY_CAP_GAP;
+        for (int i = 0; i < keyCaps.length; i++) {
+            KeyCap keyCap = keyCaps[i];
             keyCap.setTranslateX((KEYS_COLUMN_WIDTH - keysWidth) / 2 + i * (KEY_CAP_SIZE + KEY_CAP_GAP));
             keyCap.setTranslateY(-KEY_CAP_SIZE / 2);
             row.getChildren().add(keyCap);

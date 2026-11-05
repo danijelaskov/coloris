@@ -19,6 +19,9 @@ package askov.schoolprojects.cg.coloris.sprites;
 
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polygon;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.scene.transform.Rotate;
 
 /**
@@ -67,6 +70,21 @@ public class KeyCap extends Sprite {
         arrowShape.getTransforms().add(new Rotate(arrow.angle, size / 2, size / 2));
 
         super.getChildren().addAll(cap, arrowShape);
+    }
+
+    public KeyCap(double size, String label) {
+        this.size = size;
+
+        Square cap = new Square(size, size, Square.SquareColor.WHITE);
+        cap.update();
+
+        Text labelText = new Text(label);
+        labelText.setFont(Font.font("Arial", FontWeight.BOLD, size * 0.62));
+        labelText.setFill(ARROW_COLOR);
+        labelText.setTranslateX((size - labelText.getLayoutBounds().getWidth()) / 2 - labelText.getLayoutBounds().getMinX());
+        labelText.setTranslateY((size - labelText.getLayoutBounds().getHeight()) / 2 - labelText.getLayoutBounds().getMinY());
+
+        super.getChildren().addAll(cap, labelText);
     }
 
     @Override
