@@ -257,6 +257,11 @@ public class Coloris extends Application {
                             gameLogic.speedUpFallingBlock();
                         }
                     }
+                    case C -> {
+                        if (!paused && !gameLogic.isGameOver()) {
+                            gameLogic.swapFallingBlockWithNextBlock();
+                        }
+                    }
                     case LEFT -> {
                         if (!paused && !gameLogic.isGameOver()) {
                             gameLogic.moveFallingBlockHorizontally(GameLogic.MoveDirection.LEFT);

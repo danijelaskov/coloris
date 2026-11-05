@@ -50,6 +50,7 @@ public class GameLogic {
     private final Block fallingBlock;
     private int fallingBlockColumn;
     private double fallingBlockSpeed = DEFAULT_FALLING_BLOCK_SPEED;
+    private boolean canSwapNextBlock = true;
 
     private final Block nextBlock;
 
@@ -112,6 +113,20 @@ public class GameLogic {
         }
     }
 
+    public void swapFallingBlockWithNextBlock() {
+        if (!canSwapNextBlock) {
+            return;
+        }
+
+        for (int i = 0; i < fallingBlock.getNumSquares(); i++) {
+            Square.SquareColor fallingColor = fallingBlock.getSquare(i).getSquareColor();
+            fallingBlock.getSquare(i).setSquareColor(nextBlock.getSquare(i).getSquareColor());
+            nextBlock.getSquare(i).setSquareColor(fallingColor);
+        }
+
+        canSwapNextBlock = false;
+    }
+
     public void moveFallingBlockVertically() {
         fallingBlock.setTranslateY(fallingBlock.getTranslateY() + fallingBlockSpeed / REFRESH_RATE);
     }
@@ -157,6 +172,7 @@ public class GameLogic {
 
         fallingBlock.absorbColorsFrom(nextBlock);
         nextBlock.setRandomSquareColors();
+        canSwapNextBlock = true;
     }
 
     public void reorderFallingBlockSquares() {
