@@ -33,6 +33,7 @@ import askov.schoolprojects.cg.coloris.sprites.Square;
 import askov.schoolprojects.cg.coloris.sprites.SquareMatrix;
 import askov.schoolprojects.cg.coloris.sprites.Universe;
 import askov.schoolprojects.cg.coloris.sprites.Well;
+import askov.schoolprojects.cg.coloris.sprites.RestartButton;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -183,6 +184,20 @@ public class Coloris extends Application {
         return toggle;
     }
 
+    private RestartButton createRestartButton(MusicToggle musicToggle) {
+        RestartButton button = new RestartButton(musicToggle.getWidth() * 0.8, musicToggle.getHeight(), this::restartGame);
+        button.setTranslateX(musicToggle.getTranslateX() - button.getWidth() - 10);
+        button.setTranslateY(musicToggle.getTranslateY());
+        return button;
+    }
+
+    private void restartGame() {
+        paused = false;
+        animationTimer.stop();
+        mediaPlayer.stop();
+        startGame();
+    }
+
     private void startGame() {
         well = new Well(SQUARE_MATRIX_WIDTH, SQUARE_MATRIX_HEIGHT);
         nextBlock = new Block(BLOCK_SIZE, BLOCK_SIZE);
@@ -223,7 +238,8 @@ public class Coloris extends Application {
         level.setTranslateY(score.getTranslateY() - score.getHeight() - 15);
 
         root.getChildren().addAll(score, level);
-        root.getChildren().add(createMusicToggle());
+        MusicToggle musicToggle = createMusicToggle();
+        root.getChildren().addAll(musicToggle, createRestartButton(musicToggle));
 
         gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score, level);
 
