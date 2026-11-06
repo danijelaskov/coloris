@@ -42,6 +42,8 @@ import javafx.geometry.Bounds;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
@@ -79,6 +81,10 @@ public class Coloris extends Application {
     private Block nextBlock;
 
     private Group root;
+    private Group viewportRoot;
+    private Group scaledContent;
+    private Rectangle fullScreenBackground;
+    private Stage primaryStage;
 
     private GameLogic gameLogic;
     private AnimationTimer animationTimer;
@@ -98,6 +104,7 @@ public class Coloris extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
         loadCustomBlockColors();
         mainMenu = new GameMenu(MENU_WIDTH, MENU_HEIGHT,
                 new MenuOption("PLAY", this::startGame),
@@ -106,12 +113,48 @@ public class Coloris extends Application {
                 new MenuOption("EXIT", Platform::exit));
         controlsPanel = new ControlsPanel(MENU_WIDTH, MENU_HEIGHT, this::showMainMenu);
 
-        scene = new Scene(new Group(), WIDTH, HEIGHT);
+        viewportRoot = new Group();
+        fullScreenBackground = new Rectangle();
+        fullScreenBackground.setFill(Color.BLACK);
+        scaledContent = new Group();
+        viewportRoot.getChildren().addAll(fullScreenBackground, universe, scaledContent);
+
+        scene = new Scene(viewportRoot, WIDTH, HEIGHT);
 
         primaryStage.setTitle("Coloris");
         primaryStage.setScene(scene);
+        primaryStage.setWidth(WIDTH);
+        primaryStage.setHeight(HEIGHT);
         primaryStage.sizeToScene();
         primaryStage.setResizable(false);
+        primaryStage.setFullScreenExitKeyCombination(KeyCombination.NO_MATCH);
+
+        Runnable syncSceneToStage = () -> {
+            double targetWidth = primaryStage.isFullScreen() ? primaryStage.getWidth() : WIDTH;
+            double targetHeight = primaryStage.isFullScreen() ? primaryStage.getHeight() : HEIGHT;
+
+            if (scene == null || scene.getWidth() != targetWidth || scene.getHeight() != targetHeight) {
+                scene = new Scene(viewportRoot, targetWidth, targetHeight);
+                primaryStage.setScene(scene);
+            }
+            updateViewportScale();
+        };
+
+        primaryStage.fullScreenProperty().addListener((observable, oldValue, newValue) -> syncSceneToStage.run());
+        primaryStage.widthProperty().addListener((observable, oldValue, newValue) -> {
+            if (primaryStage.isFullScreen()) {
+                syncSceneToStage.run();
+            }
+        });
+        primaryStage.heightProperty().addListener((observable, oldValue, newValue) -> {
+            if (primaryStage.isFullScreen()) {
+                syncSceneToStage.run();
+            }
+        });
+        scene.widthProperty().addListener((observable, oldValue, newValue) -> updateViewportScale());
+        scene.heightProperty().addListener((observable, oldValue, newValue) -> updateViewportScale());
+
+        syncSceneToStage.run();
 
         animationTimer = new AnimationTimer() {
             @Override
@@ -128,6 +171,27 @@ public class Coloris extends Application {
         showMainMenu();
 
         primaryStage.show();
+    }
+
+    private void updateViewportScale() {
+        double sceneWidth = scene.getWidth();
+        double sceneHeight = scene.getHeight();
+
+        fullScreenBackground.setWidth(sceneWidth);
+        fullScreenBackground.setHeight(sceneHeight);
+        universe.resizeTo(sceneWidth, sceneHeight);
+
+        double scale = Math.min(sceneWidth / WIDTH, sceneHeight / HEIGHT);
+        scaledContent.setScaleX(scale);
+        scaledContent.setScaleY(scale);
+        scaledContent.setTranslateX((sceneWidth - WIDTH * scale) / 2.0);
+        scaledContent.setTranslateY((sceneHeight - HEIGHT * scale) / 2.0);
+    }
+
+    private void setSceneContent(Group content) {
+        root = content;
+        scaledContent.getChildren().setAll(root);
+        updateViewportScale();
     }
 
     private void showMainMenu() {
@@ -197,10 +261,15 @@ public class Coloris extends Application {
         menu.setTranslateY(colorStrip.getBoundsInParent().getMaxY() + (HEIGHT - colorStrip.getBoundsInParent().getMaxY() - menu.getHeight()) / 2);
 
         root = new Group();
-        root.getChildren().addAll(universe, gameLogo, colorStrip, menu, createMusicToggle());
-        scene.setRoot(root);
+        root.getChildren().addAll(gameLogo, colorStrip, menu, createMusicToggle());
+        setSceneContent(root);
 
         scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.F) {
+                primaryStage.setFullScreen(!primaryStage.isFullScreen());
+                return;
+            }
+
             switch (event.getCode()) {
                 case UP -> menu.selectPrevious();
                 case DOWN -> menu.selectNext();
@@ -257,7 +326,7 @@ public class Coloris extends Application {
 
         root = new Group();
 
-        root.getChildren().addAll(universe, well);
+        root.getChildren().addAll(well);
 
         well.setTranslateX(-well.getWidth() / 2 + WIDTH / 3.);
         well.setTranslateY(-well.getBorderSize());
@@ -296,8 +365,13 @@ public class Coloris extends Application {
 
         gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score, level);
 
-        scene.setRoot(root);
+        setSceneContent(root);
         scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.F) {
+                primaryStage.setFullScreen(!primaryStage.isFullScreen());
+                return;
+            }
+
             if (fallingBlock != null) {
                 switch (event.getCode()) {
                     case UP -> {
@@ -364,7 +438,11 @@ public class Coloris extends Application {
             well.update();
 
             animationTimer.stop();
-            scene.setOnKeyPressed(event -> {});
+            scene.setOnKeyPressed(event -> {
+                if (event.getCode() == KeyCode.F) {
+                    primaryStage.setFullScreen(!primaryStage.isFullScreen());
+                }
+            });
             mediaPlayer.stop();
 
             // Faixa escura translúcida atrás do texto, para dar contraste
@@ -400,7 +478,11 @@ public class Coloris extends Application {
                 well.update();
 
                 animationTimer.stop();
-                scene.setOnKeyPressed(event -> {});
+                scene.setOnKeyPressed(event -> {
+                    if (event.getCode() == KeyCode.F) {
+                        primaryStage.setFullScreen(!primaryStage.isFullScreen());
+                    }
+                });
                 mediaPlayer.stop();
 
                 GameOverLabel gameOverLabel = new GameOverLabel();
