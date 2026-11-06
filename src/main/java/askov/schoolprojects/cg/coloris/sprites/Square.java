@@ -21,6 +21,8 @@ package askov.schoolprojects.cg.coloris.sprites;
 
 import java.util.List;
 import java.util.Random;
+import java.util.Arrays;
+import java.util.HashSet;
 import javafx.animation.Animation;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -45,10 +47,13 @@ public class Square extends Sprite {
         BLUE     (Color.web("0x00AADD")),
         RED      (Color.web("0xCC0000")),
         CYCLAMEN (Color.web("0xCC00CC")),
+        ORANGE   (Color.web("0xFF7700")),
+        DARK_GREEN (Color.web("0x008844")),
+        DARK_BLUE  (Color.web("0x003399")),
+        PURPLE   (Color.web("0x7722CC")),
+        LIME     (Color.web("0x66AA00")),
         NULL     (Color.TRANSPARENT);
 
-        private static final List<SquareColor> SQUARE_COLORS = List.of(values());
-        private static final int NUM_SQUARE_COLORS = SQUARE_COLORS.size();
         private static final Random RANDOM = new Random();
 
         private final Color color;
@@ -61,11 +66,37 @@ public class Square extends Sprite {
             return color;
         }
 
+        public String getDisplayName() {
+            return switch (this) {
+                case DARK_GREEN -> "DARK GREEN";
+                case DARK_BLUE -> "DARK BLUE";
+                case CYCLAMEN -> "PINK";
+                case BLUE -> "LIGHT BLUE";
+                case NULL -> "";
+                default -> name();
+            };
+        }
+
         public static SquareColor randomSquareColor(boolean includeTransparent) {
-            return SQUARE_COLORS.get(RANDOM.nextInt(includeTransparent ? NUM_SQUARE_COLORS : NUM_SQUARE_COLORS - 1));
+            List<SquareColor> colors = activeSquareColors;
+            int colorCount = colors.size() + (includeTransparent ? 1 : 0);
+            int selectedIndex = RANDOM.nextInt(colorCount);
+            return selectedIndex == colors.size() ? NULL : colors.get(selectedIndex);
         }
 
     }
+
+    private static final List<SquareColor> AVAILABLE_SQUARE_COLORS = Arrays.stream(SquareColor.values())
+            .filter(color -> color != SquareColor.NULL)
+            .toList();
+    private static final List<SquareColor> DEFAULT_SQUARE_COLORS = List.of(
+            SquareColor.WHITE,
+            SquareColor.YELLOW,
+            SquareColor.BLUE,
+            SquareColor.RED,
+            SquareColor.CYCLAMEN
+    );
+    private static List<SquareColor> activeSquareColors = DEFAULT_SQUARE_COLORS;
 
     public static final SquareColor DEFAULT_SQUARE_COLOR = SquareColor.NULL;
     private static final double SQUARE_DESTRUCTION_DURATION = 0.30; // Seconds
@@ -79,6 +110,28 @@ public class Square extends Sprite {
     private final Polygon triangle2;
 
     private Timeline animation;
+
+    public static List<SquareColor> getAvailableSquareColors() {
+        return AVAILABLE_SQUARE_COLORS;
+    }
+
+    public static List<SquareColor> getActiveSquareColors() {
+        return List.copyOf(activeSquareColors);
+    }
+
+    public static void setActiveSquareColors(SquareColor[] colors) {
+        if (colors == null || colors.length != DEFAULT_SQUARE_COLORS.size()) {
+            throw new IllegalArgumentException("The active palette must contain exactly five colors.");
+        }
+
+        List<SquareColor> palette = Arrays.asList(colors.clone());
+        if (palette.contains(null) || palette.contains(SquareColor.NULL)
+                || new HashSet<>(palette).size() != DEFAULT_SQUARE_COLORS.size()
+                || !AVAILABLE_SQUARE_COLORS.containsAll(palette)) {
+            throw new IllegalArgumentException("The active palette must contain five different block colors.");
+        }
+        activeSquareColors = List.copyOf(palette);
+    }
     
     public Square(double width, double height, SquareColor blockColor) {
         this.width = width;

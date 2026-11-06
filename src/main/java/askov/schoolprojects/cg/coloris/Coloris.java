@@ -21,6 +21,7 @@ package askov.schoolprojects.cg.coloris;
 
 import askov.schoolprojects.cg.coloris.gamelogic.GameLogic;
 import askov.schoolprojects.cg.coloris.sprites.ControlsPanel;
+import askov.schoolprojects.cg.coloris.sprites.CustomBlocksPanel;
 import askov.schoolprojects.cg.coloris.sprites.GameFont;
 import askov.schoolprojects.cg.coloris.sprites.GameLogo;
 import askov.schoolprojects.cg.coloris.sprites.Block;
@@ -50,6 +51,9 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import java.util.Arrays;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 
 /**
  *
@@ -65,6 +69,8 @@ public class Coloris extends Application {
     private static final double MENU_LOGO_FONT_SIZE = 1.4 * GameLogo.FONT_SIZE;
     private static final double MENU_WIDTH = 1.5 * SQUARE_MATRIX_WIDTH;
     private static final double MENU_HEIGHT = HEIGHT / 3.25;
+    private static final Preferences PREFERENCES = Preferences.userNodeForPackage(Coloris.class);
+    private static final String CUSTOM_COLORS_KEY = "customBlockColors";
 
     private final Universe universe = new Universe(WIDTH, HEIGHT);
     private Well well;
@@ -84,6 +90,7 @@ public class Coloris extends Application {
 
     private GameMenu mainMenu;
     private ControlsPanel controlsPanel;
+    private CustomBlocksPanel customBlocksPanel;
     private boolean musicMuted;
 
     private final Media media = new Media(Thread.currentThread().getContextClassLoader().getResource("music/music.mp3").toExternalForm());
@@ -91,9 +98,11 @@ public class Coloris extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        loadCustomBlockColors();
         mainMenu = new GameMenu(MENU_WIDTH, MENU_HEIGHT,
                 new MenuOption("PLAY", this::startGame),
                 new MenuOption("CONTROLS", this::showControls),
+                new MenuOption("CUSTOM BLOCKS", this::showCustomBlocks),
                 new MenuOption("EXIT", Platform::exit));
         controlsPanel = new ControlsPanel(MENU_WIDTH, MENU_HEIGHT, this::showMainMenu);
 
@@ -128,6 +137,50 @@ public class Coloris extends Application {
 
     private void showControls() {
         showMenuScreen(controlsPanel);
+    }
+
+    private void showCustomBlocks() {
+        customBlocksPanel = new CustomBlocksPanel(
+                MENU_WIDTH,
+                MENU_HEIGHT,
+                Square.getActiveSquareColors(),
+                this::saveCustomBlockColors);
+        showMenuScreen(customBlocksPanel);
+    }
+
+    private void saveCustomBlockColors() {
+        Square.SquareColor[] colors = customBlocksPanel.getSelectedColors();
+        Square.setActiveSquareColors(colors);
+        PREFERENCES.put(CUSTOM_COLORS_KEY, String.join(",", Arrays.stream(colors)
+                .map(Enum::name)
+                .toList()));
+        try {
+            PREFERENCES.flush();
+        } catch (BackingStoreException exception) {
+            System.err.println("Could not persist the custom block colors: " + exception.getMessage());
+        }
+        showMainMenu();
+    }
+
+    private static void loadCustomBlockColors() {
+        String savedColors = PREFERENCES.get(CUSTOM_COLORS_KEY, "");
+        if (savedColors.isBlank()) {
+            return;
+        }
+
+        String[] names = savedColors.split(",");
+        if (names.length != 5) {
+            return;
+        }
+
+        try {
+            Square.SquareColor[] colors = Arrays.stream(names)
+                    .map(Square.SquareColor::valueOf)
+                    .toArray(Square.SquareColor[]::new);
+            Square.setActiveSquareColors(colors);
+        } catch (IllegalArgumentException exception) {
+            // Ignore outdated or invalid preferences and keep the default palette.
+        }
     }
 
     private void showMenuScreen(GameMenu menu) {
