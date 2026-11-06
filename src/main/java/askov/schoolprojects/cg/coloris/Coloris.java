@@ -30,13 +30,14 @@ import askov.schoolprojects.cg.coloris.sprites.Universe;
 import askov.schoolprojects.cg.coloris.sprites.Well;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.text.Text;
+import javafx.geometry.Rectangle2D;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Duration;
@@ -51,7 +52,7 @@ public class Coloris extends Application {
     private static final double HEIGHT = 650;
     private static final double BLOCK_SIZE = WIDTH / 28;
     private static final double SQUARE_MATRIX_WIDTH = SquareMatrix.DEFAULT_NUM_COLUMNS * BLOCK_SIZE;
-    private static final double SQUARE_MATRIX_HEIGHT = (SquareMatrix.DEFAULT_NUM_ROWS + Block.DEFAULT_NUM_SQUARES) * BLOCK_SIZE;
+    private static final double SQUARE_MATRIX_HEIGHT = (SquareMatrix.DEFAULT_NUM_ROWS + Block.DEFAULT_NUM_SQUARES) * BLOCK_SIZE;   
 
     private final Universe universe = new Universe(WIDTH, HEIGHT);
     private final Well well = new Well(SQUARE_MATRIX_WIDTH, SQUARE_MATRIX_HEIGHT);
@@ -65,9 +66,12 @@ public class Coloris extends Application {
     private AnimationTimer animationTimer;
     private boolean paused = false;
     private Text pauseText;
-
+    private Paint normalSceneFill;
+    private final double defaultUniverseWidth = WIDTH;
+    private final double defaultUniverseHeight = HEIGHT;
+    
     private Scene scene;
-
+    
     private final Media media = new Media(Thread.currentThread().getContextClassLoader().getResource("music/music.mp3").toExternalForm());
     private final MediaPlayer mediaPlayer = new MediaPlayer(media);
 
@@ -76,15 +80,15 @@ public class Coloris extends Application {
         root = new Group();
 
         root.getChildren().addAll(universe, well);
-
+        
         well.setTranslateX(-well.getWidth() / 2 + WIDTH / 3.);
         well.setTranslateY(-well.getBorderSize());
 
         fallingBlock = well.getFallingBlock();
-
+        
         nextBlock.setTranslateX(-BLOCK_SIZE / 2 + 0.50 * well.getTranslateX());
         nextBlock.setTranslateY(0.15 * HEIGHT);
-
+        
         GameLogo gameLogo = new GameLogo();
         gameLogo.setTranslateX(-gameLogo.getWidth() / 2 + 0.50 * well.getTranslateX());
         gameLogo.setTranslateY(nextBlock.getTranslateY() + nextBlock.getHeight() + GameLogo.FONT_SIZE + 10);
@@ -98,7 +102,7 @@ public class Coloris extends Application {
         pauseText.setTranslateX(-pauseText.getBoundsInParent().getWidth() / 2 + WIDTH / 3.);
         pauseText.setTranslateY(-pauseText.getBoundsInParent().getHeight() / 2 + 0.20 * well.getSquareMatrix().getHeight());
         root.getChildren().add(pauseText);
-
+        
         LabeledValue score = new LabeledValue(SQUARE_MATRIX_WIDTH, HEIGHT / 6, "SCORE", 0);
         score.setTranslateX(-score.getWidth() / 2 + (WIDTH - (WIDTH - (WIDTH / 3. + well.getWidth() / 2)) / 2));
         score.setTranslateY(-score.getHeight() / 2 + HEIGHT / 2.);
@@ -106,12 +110,13 @@ public class Coloris extends Application {
         LabeledValue level = new LabeledValue(SQUARE_MATRIX_WIDTH, HEIGHT / 6, "LEVEL", 1);
         level.setTranslateX(-level.getWidth() / 2 + (WIDTH - (WIDTH - (WIDTH / 3. + well.getWidth() / 2)) / 2));
         level.setTranslateY(score.getTranslateY() - score.getHeight() - 20);
-
+        
         root.getChildren().addAll(score, level);
 
         gameLogic = new GameLogic(well.getSquareMatrix(), fallingBlock, nextBlock, score, level);
-
+        
         scene = new Scene(root, WIDTH, HEIGHT);
+        normalSceneFill = scene.getFill();
         scene.setOnKeyPressed(event -> {
             if (fallingBlock != null) {
                 switch (event.getCode()) {
@@ -156,13 +161,13 @@ public class Coloris extends Application {
             }
         };
         animationTimer.start();
-
+        
         mediaPlayer.play();
         mediaPlayer.setOnEndOfMedia(() -> {
             mediaPlayer.seek(Duration.ZERO);
             mediaPlayer.play();
         });
-
+        
         primaryStage.show();
     }
 
@@ -189,20 +194,20 @@ public class Coloris extends Application {
             return;
         }
 
-        Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
-
-        if (!primaryStage.isFullScreen()) {
-            universe.resize(screenBounds.getWidth(), screenBounds.getHeight());
-            universe.requestLayout();
+        boolean goingFullScreen = !primaryStage.isFullScreen();
+        if (goingFullScreen) {
+            Rectangle2D visualBounds = Screen.getPrimary().getVisualBounds();
+            universe.resize(visualBounds.getWidth(), visualBounds.getHeight());
+            scene.setFill(Color.BLACK);
             root.requestLayout();
-
+            scene.getRoot().requestLayout();
             primaryStage.setFullScreen(true);
         } else {
             primaryStage.setFullScreen(false);
-
-            universe.resize(WIDTH, HEIGHT);
-            universe.requestLayout();
+            universe.resize(defaultUniverseWidth, defaultUniverseHeight);
+            scene.setFill(normalSceneFill);
             root.requestLayout();
+            scene.getRoot().requestLayout();
         }
 
         scene.getRoot().requestFocus();
@@ -221,10 +226,9 @@ public class Coloris extends Application {
 
             if (gameLogic.isGameOver()) {
                 well.update();
-
+                
                 animationTimer.stop();
-                scene.setOnKeyPressed(event -> {
-                });
+                scene.setOnKeyPressed(event -> {});
                 mediaPlayer.stop();
 
                 GameOverLabel gameOverLabel = new GameOverLabel();

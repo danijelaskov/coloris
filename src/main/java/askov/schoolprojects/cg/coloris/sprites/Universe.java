@@ -100,30 +100,15 @@ public class Universe extends Sprite {
     private static final Color UNIVERSE_COLOR = Color.BLACK;
     private static final int NUM_STARS = 50;
     private static final Random RANDOM = new Random();
-
-    private static final double BASE_WIDTH = 700.0;
-    private static final double BASE_HEIGHT = 650.0;
-
-    private final Rectangle background;
-
-    private double width;
-    private double height;
+    private final double width;
+    private final double height;
 
     public Universe(double width, double height) {
-        this.width = width;
-        this.height = height;
-
-        background = new Rectangle(width, height);
+        Rectangle background = new Rectangle(this.width = width, this.height = height);
         background.setFill(UNIVERSE_COLOR);
         super.getChildren().add(background);
 
-        createStars(width, height);
-    }
-
-    private void createStars(double width, double height) {
-        int numStars = Math.max(1, (int) Math.round(NUM_STARS * (width * height) / (BASE_WIDTH * BASE_HEIGHT)));
-
-        for (int i = 0; i < numStars; i++) {
+        for (int i = 0; i < NUM_STARS; i++) {
             double posX = RANDOM.nextDouble() * width;
             double posY = RANDOM.nextDouble() * height;
 
@@ -136,22 +121,10 @@ public class Universe extends Sprite {
         }
     }
 
-    public void resize(double width, double height) {
-        this.width = width;
-        this.height = height;
-
-        background.setWidth(width);
-        background.setHeight(height);
-
-        super.getChildren().removeIf(node -> node instanceof Star);
-        createStars(width, height);
-        requestLayout();
-    }
-
     @Override
     public void update() {
     }
-
+    
     @Override
     public double getWidth() {
         return width;
